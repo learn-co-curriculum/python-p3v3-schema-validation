@@ -1,38 +1,30 @@
-# Validation : Code-Along
+# Technical Lesson: Marshmallow Schema Validation
 
-## Learning Goals
+## Scenario
 
-- Handle validation errors that arise during deserialization.
-- Recognize common field type errors.
-- Define required fields.
-- Use partial loading to skip required fields.
-- Define default values for missing data.
-- Use builtin field validators.
-- Write custom field and schema validators.
+You’re building a Flask API to handle incoming POST requests from users filling 
+out a registration form on your website. Each submission is expected to include 
+a name, age, and email address. You want to ensure that:
 
----
+* All required fields are present.
+* Data is the correct type (e.g., age should be an integer, email must be valid).
+* Optional fields can have defaults.
+* No unexpected fields sneak through.
+* Certain combinations of fields don’t violate business rules (e.g. a user can’t 
+be marked as both active and deactivated).
 
-## Key Vocab
+Instead of writing manual checks for each field, you’ll use Marshmallow’s schema 
+validation system. Marshmallow allows you to define these expectations declaratively, 
+raising descriptive validation errors if data is missing, malformed, or invalid. This 
+ensures that your API handles input safely and predictably—and avoids sending broken 
+data to your database or business logic.
 
-- **Serialization**: a process to convert programmatic data such as a Python
-  object to a sequence of bytes that can be shared with other programs,
-  computers, or networks.
-- **Deserialization**: the reverse process, converting input data back to
-  programmatic data.
-- **Validation**: a process for checking the validity of data such as the type,
-  format, or values.
-- **Schema**: A class used to validate, serialize, and deserialize data.
+## Tools & Resources
 
----
-
-## Introduction
-
-Data is validated during deserialization. A `ValidationError` exception is
-raised when validation fails on a field or schema. The `marshmallow` library
-provides many helpful built-in validators, and also lets us create custom
-validators.
-
----
+- [GitHub Repo](https://github.com/learn-co-curriculum/flask-sqlalchemy-schema-validation-technical-lesson)
+- [marshmallow](https://pypi.org/project/marshmallow/)
+- [marshmallow quickstart](https://marshmallow.readthedocs.io/en/stable/quickstart.html)
+- [marshmallow validator](https://marshmallow.readthedocs.io/en/stable/marshmallow.validate.html#api-validators)
 
 ## Setup
 
@@ -46,9 +38,65 @@ $ pipenv install
 $ pipenv shell
 ```
 
----
+## Instructions
 
-## Type errors
+### Task 1: Define the Problem
+
+When accepting data into an application, especially via forms or APIs, it’s 
+critical to ensure that the input is clean, complete, and conforms to your 
+expectations. Without validation, your app may:
+
+* Accept incorrect data types (e.g. a string where a number is expected).
+* Accept invalid or malicious content (e.g. malformed emails, missing fields, 
+  unexpected keys).
+* Crash due to schema mismatches or logic errors.
+* Produce inconsistent or incorrect output due to bad data.
+
+The `marshmallow` library allows you to define structured validation rules 
+directly within a schema. While serialization turns Python objects into JSON 
+or dicts, deserialization (and validation) checks that inbound data matches 
+expectations before it’s converted into usable Python objects. This is particularly 
+essential for any application that allows user input.
+
+### Task 2: Determine the Design
+
+To address the above problems, your design should include the following components:
+
+1. Schema Field Type Enforcement
+    * Use fields.Str(), fields.Int(), fields.Email(), and other built-in types to ensure 
+    that each field is validated for correct type on input.
+
+2. Required Fields
+    * Use required=True on schema fields that are mandatory. Without this, Marshmallow will 
+    allow them to be omitted silently.
+
+3. Partial Loads
+    * Use the partial argument to allow flexible loading in update or PATCH scenarios. This 
+    allows skipping required checks for selected fields.
+
+4. Default Values
+    * Define load_default and dump_default to assign fallback values when none are provided, 
+    enabling smoother deserialization and serialization.
+
+5. Unknown Field Handling
+    * Use the unknown keyword to specify whether extra fields should raise an error (RAISE), 
+    be ignored (EXCLUDE), or be retained (INCLUDE).
+
+6. Field-Level Validators
+    * Apply constraints such as validate.Length(), validate.Range(), or validate.OneOf() to 
+    enforce value rules.
+
+7. Schema-Level Validation
+    * When relationships exist between fields (e.g. two booleans should not both be true), 
+    use @validates_schema to perform multi-field validation logic.
+
+8. Custom Validation Logic
+    * Use the @validates decorator for field-level logic or create reusable functions for 
+    complex or domain-specific validation needs.
+
+### Task 3: Develop, Test, and Refine the Code
+
+#### Step 1: Handle Type Errors
 
 A `marshmallow` schema defines variables that map attribute names to `Field`
 objects, each specifying the expected data type using classes `field.Int()`,
@@ -150,7 +198,7 @@ Invalid data:
 
 ---
 
-## Required fields
+#### Step 2: Specify Required Fields
 
 Fields defined in a schema are optional by default, and thus need not be
 included in the data passed to the deserialization methods. A field can be
@@ -233,7 +281,7 @@ Invalid data:
 
 ---
 
-## Skipping Required Fields (i.e. Partial-Loading)
+#### Step 3: Optionally Skip Required Fields (i.e. Partial-Loading)
 
 If the same schema is used to deserialize data in multiple scenarios, you can
 selectively skip required validation by passing a partial parameter to the
@@ -259,7 +307,7 @@ pprint(result_2)  # => {'age': 42}
 
 ---
 
-## Default Values
+#### Step 4: Define Default Values
 
 When defining a schema field, the parameter `load_default` specifies the default
 deserialization value for a field, while `dump_default` specifies the default
@@ -286,7 +334,7 @@ pprint(OwnerSchema().dump({}))     # dob is missing, will be assigned default va
 
 ---
 
-## Unknown Fields
+#### Step 5: Handle Unknown Fields
 
 By default, a `ValidationError` is raised during loading if the data includes a
 key with no matching field in the schema. The code in `lib/unknown.py` raises a
@@ -341,7 +389,7 @@ deserialized result.
 
 ---
 
-## Builtin Field Validators
+#### Step 6: Use Builtin Field Validators
 
 We've seen how marshmallow supports builtin validation for field data types.
 
@@ -479,7 +527,7 @@ $ python builtin.py
 
 ---
 
-## Schema Validation
+#### Step 7: Implement Schema-Level Validation with `@validates_schema`
 
 So far we've seen how to perform validation on an individual field. Sometimes we
 need to perform schema-level validation, where we may need to check data values
@@ -530,7 +578,7 @@ except ValidationError as err:
 
 ---
 
-## Custom Field Validators
+#### Step 8: Define Custom Field Validators
 
 Finally, `lib/custom.py` shows an example of custom validation functions and
 custom error messages.
@@ -615,16 +663,9 @@ Run the program to confirm the validation error message:
                            'feather.']}}}
 ```
 
----
+#### Step 9: Verify your Code
 
-## Conclusion
-
-The `marshmallow` library includes many builtin validators. We've looked at just
-a few, but you can see how helpful they are in restricting data values during
-deserialization. We can also write custom validators, along with customizing the
-error messages included during deserialization.
-
-## Solution Code
+Solution Code:
 
 ```py
 # lib/type.py
@@ -908,10 +949,53 @@ except ValidationError as err:
     # =>  4: {'favorite_toys': {0: ['Must include one of: ball, stuffed, squeak, plush, feather.']}}}
 ```
 
----
+#### Step 10: Commit and Push Git History
 
-## Resources
+* Commit and push your code:
 
-- [marshmallow](https://pypi.org/project/marshmallow/)
-- [marshmallow quickstart](https://marshmallow.readthedocs.io/en/stable/quickstart.html)
-- [marshmallow validator](https://marshmallow.readthedocs.io/en/stable/marshmallow.validate.html#api-validators)
+```bash
+git add .
+git commit -m "final solution"
+git push
+```
+
+* If you created a separate feature branch, remember to open a PR on main and merge.
+
+### Task 4: Document and Maintain
+
+Best Practice documentation steps:
+* Add comments to the code to explain purpose and logic, clarifying intent and functionality of your code to other developers.
+* Update README text to reflect the functionality of the application following https://makeareadme.com. 
+  * Add screenshot of completed work included in Markdown in README.
+* Delete any stale branches on GitHub
+* Remove unnecessary/commented out code
+* If needed, update git ignore to remove sensitive data
+
+## Conclusion
+
+The `marshmallow` library includes many builtin validators. We've looked at just
+a few, but you can see how helpful they are in restricting data values during
+deserialization. We can also write custom validators, along with customizing the
+error messages included during deserialization.
+
+## Considerations
+
+### Explicit error feedback
+Marshmallow returns both valid and invalid data when errors occur. 
+Use .messages and .valid_data to give users actionable feedback.
+
+### Security
+Use unknown=EXCLUDE when accepting user input to avoid injection of 
+unexpected keys.
+
+### Consistency
+Use shared validator functions across multiple schemas when business 
+logic overlaps.
+
+### Test both valid and invalid input
+Ensure your validators are catching real issues and not rejecting 
+acceptable edge cases.
+
+### Avoid premature optimization
+Start with simple validations (e.g. required, type), then layer in 
+stricter checks as your application evolves.
